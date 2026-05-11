@@ -1,0 +1,47 @@
+@import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600&family=Noto+Sans+SC:wght@400;700&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Noto Sans SC", "PingFang SC", "Microsoft YaHei", sans-serif;
+  --font-display: "Fredoka", "Noto Sans SC", sans-serif;
+  
+  --color-nmti-primary: #9db495; /* Bean Green */
+  --color-nmti-secondary: #b89b5e; /* Muted Gold */
+  --color-nmti-bg: #f2f5f2; /* Soft Bean Green White */
+  --color-nmti-card: #ffffff;
+  --color-nmti-text: #3a403a;
+}
+
+@layer base {
+  body {
+    @apply bg-nmti-bg text-nmti-text font-sans;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .nmti-shadow {
+    box-shadow: 4px 4px 12px rgba(0,0,0,0.03), 0px 4px 0px 0px rgba(157, 180, 149, 0.1);
+    border: 1px solid rgba(157, 180, 149, 0.15);
+  }
+  
+  .nmti-button-shadow {
+    box-shadow: 0px 4px 0px 0px rgba(157, 180, 149, 0.2);
+    border: 1px solid rgba(157, 180, 149, 0.3);
+  }
+  
+  .nmti-button-shadow:active {
+    box-shadow: 0px 1px 0px 0px rgba(157, 180, 149, 0.1);
+    transform: translateY(3px);
+  }
+}
+
+/* Custom transitions */
+.page-enter {
+  opacity: 0;
+  transform: translateY(10px);
+}
+.page-enter-active {
+  opacity: 1;
+  transform: translateY(0);
+  transition: opacity 300ms, transform 300ms;
+}
+
