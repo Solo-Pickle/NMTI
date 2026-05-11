@@ -14,7 +14,7 @@ import { uiTranslations } from './i18n';
 
 // ---------- Google Analytics 初始化 ----------
 // 请将下方的 MEASUREMENT_ID 替换为你在 GA4 中实际获取的 Measurement ID (以 G- 开头)
-const MEASUREMENT_ID = 'G-BVBMZG71TE'; // 🔁 替换为你的真实 ID
+const MEASUREMENT_ID = 'G-NS1GQQ3EKR'; // 🔁 替换为你的真实 ID
 
 // 加载 GA 脚本并初始化
 const initGA = () => {
