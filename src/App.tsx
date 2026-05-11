@@ -6,15 +6,16 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { roles, questions } from './data';
-import { Step, RoleKey, CalculationResult } from './types';
+import { Step, RoleKey, CalculationResult, Language } from './types';
 import { calculateResult } from './logic';
-import { ChevronLeft, Share2, RotateCcw, Image as ImageIcon, BookOpen } from 'lucide-react';
+import { ChevronLeft, Share2, RotateCcw, BookOpen, Languages } from 'lucide-react';
+import { uiTranslations } from './i18n';
 
 // --- Shared Components ---
 
-const Disclaimer = () => (
+const Disclaimer = ({ lang }: { lang: Language }) => (
   <p className="text-[10px] text-gray-400 mt-8 text-center pb-8">
-    本测试仅供娱乐，不代表专业心理诊断。
+    {uiTranslations[lang].disclaimer}
   </p>
 );
 
@@ -44,14 +45,36 @@ const Button = ({
 
 // --- Page Components ---
 
-const Home = ({ onStart, onViewGallery }: { onStart: () => void; onViewGallery: () => void }) => {
+const Home = ({ 
+  onStart, 
+  onViewGallery, 
+  lang, 
+  onToggleLang 
+}: { 
+  onStart: () => void; 
+  onViewGallery: () => void;
+  lang: Language;
+  onToggleLang: () => void;
+  key?: React.Key;
+}) => {
+  const t = uiTranslations[lang];
   return (
     <motion.div 
       initial={{ opacity: 0 }} 
       animate={{ opacity: 1 }} 
       exit={{ opacity: 0 }}
-      className="min-h-screen flex flex-col items-center justify-center p-10 text-center max-w-md mx-auto"
+      className="min-h-screen flex flex-col items-center justify-center p-10 text-center max-w-md mx-auto relative"
     >
+      <div className="absolute top-6 right-6">
+        <button 
+          onClick={onToggleLang}
+          className="flex items-center gap-2 bg-white/80 backdrop-blur px-3 py-2 rounded-full text-xs font-bold text-[#9db495] border border-[#9db495]/20 shadow-sm active:scale-95 transition-all"
+        >
+          <Languages size={14} />
+          {t.langSwitch}
+        </button>
+      </div>
+
       <motion.div 
         initial={{ y: -20, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
@@ -72,34 +95,37 @@ const Home = ({ onStart, onViewGallery }: { onStart: () => void; onViewGallery: 
         transition={{ delay: 0.4 }}
       >
         <h1 className="text-4xl font-display font-black text-[#3a403a] mb-4 tracking-tight">
-          NMTI 牛马人格测试
+          {t.homeTitle}
         </h1>
         <p className="text-lg text-gray-500 mb-14 font-medium">
-          16 道题，测出你的隐藏状态
+          {t.homeSubtitle}
         </p>
 
         <div className="flex flex-col gap-6 items-center">
           <Button onClick={onStart} className="w-64">
-            立即开测
+            {t.startBtn}
           </Button>
           <Button variant="secondary" onClick={onViewGallery} className="w-64 flex items-center justify-center gap-2">
             <BookOpen size={20} />
-            查看角色图鉴
+            {t.galleryBtn}
           </Button>
         </div>
       </motion.div>
 
-      <Disclaimer />
+      <Disclaimer lang={lang} />
     </motion.div>
   );
 };
 
 const Quiz = ({ 
   onSubmit, 
-  onBack 
+  onBack,
+  lang
 }: { 
   onSubmit: (answers: Record<number, number>) => void;
   onBack: () => void;
+  lang: Language;
+  key?: React.Key;
 }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [answers, setAnswers] = useState<Record<number, number>>({});
@@ -149,7 +175,7 @@ const Quiz = ({
         </span>
       </div>
       <p className="text-[10px] text-gray-400 text-center mb-6 tracking-wider">
-        请在短时间内做出最真实的反应
+        {uiTranslations[lang].progressLabel}
       </p>
 
       <AnimatePresence mode="wait">
@@ -163,7 +189,7 @@ const Quiz = ({
         >
           <div className="bg-white p-8 rounded-2xl nmti-shadow mb-10 min-h-[160px] flex items-center justify-center border-t-4 border-[#9db495]">
             <h2 className="text-xl font-bold text-[#3a403a] text-center leading-relaxed">
-              {currentQuestion.question}
+              {currentQuestion.question[lang]}
             </h2>
           </div>
 
@@ -179,7 +205,7 @@ const Quiz = ({
                     : 'bg-white border-gray-100 text-gray-600 hover:border-[#9db495]/30'
                   }`}
               >
-                {option.text}
+                {option.text[lang]}
               </motion.button>
             ))}
           </div>
@@ -189,13 +215,8 @@ const Quiz = ({
   );
 };
 
-const Loading = ({ onFinish }: { onFinish: () => void }) => {
-  const messages = [
-    "正在计算你的 NMTI 浓度……",
-    "正在匹配你的精神状态……",
-    "正在加载你的隐藏人格……",
-    "正在生成你的牛马宇宙身份……"
-  ];
+const Loading = ({ onFinish, lang }: { onFinish: () => void; lang: Language; key?: React.Key }) => {
+  const messages = uiTranslations[lang].loadingMsgs;
   const [msg] = useState(() => messages[Math.floor(Math.random() * messages.length)]);
 
   useEffect(() => {
@@ -229,13 +250,17 @@ const Loading = ({ onFinish }: { onFinish: () => void }) => {
 
 const Result = ({ 
   result, 
-  onRestart 
+  onRestart,
+  lang
 }: { 
   result: CalculationResult; 
   onRestart: () => void;
+  lang: Language;
+  key?: React.Key;
 }) => {
   const role = roles[result.finalType];
   const hiddenRole = result.hiddenType ? roles[result.hiddenType] : null;
+  const t = uiTranslations[lang];
 
   return (
     <motion.div 
@@ -252,20 +277,20 @@ const Result = ({
         >
           <img 
             src={role.image} 
-            alt={role.name} 
+            alt={role.name[lang]} 
             className="w-64 h-64 object-cover rounded-2xl nmti-shadow mx-auto"
             referrerPolicy="no-referrer"
           />
           <div className="absolute -top-4 -right-2 bg-[#b89b5e] text-white py-2 px-4 rounded-lg font-bold shadow-lg rotate-6 text-sm">
-            {role.slogan}
+            {role.slogan[lang]}
           </div>
         </motion.div>
 
-        <h1 className="text-4xl font-black text-[#3a403a] mb-2">{role.name}</h1>
-        <p className="text-xl font-bold text-[#9db495] mb-6">{role.type}</p>
+        <h1 className="text-4xl font-black text-[#3a403a] mb-2">{role.name[lang]}</h1>
+        <p className="text-xl font-bold text-[#9db495] mb-6">{role.type[lang]}</p>
         
         <div className="flex flex-wrap justify-center gap-2 mb-10">
-          {role.keywords.map((word, i) => (
+          {role.keywords[lang].map((word, i) => (
             <span key={i} className="bg-[#eef1ee] text-[#9db495] px-4 py-1.5 rounded-full text-sm font-bold border border-[#9db495]/10">
               #{word}
             </span>
@@ -278,18 +303,18 @@ const Result = ({
         <section className="bg-white p-6 rounded-2xl nmti-shadow border-t-4 border-[#9db495]">
           <h3 className="text-lg font-bold mb-3 flex items-center gap-2 text-[#3a403a]">
             <span className="w-1.5 h-5 bg-[#9db495] rounded-full" />
-            人格画像
+            {t.resultPersonaImg}
           </h3>
-          <p className="text-gray-600 leading-relaxed font-medium">{role.description}</p>
+          <p className="text-gray-600 leading-relaxed font-medium">{role.description[lang]}</p>
         </section>
 
         <section className="bg-white p-6 rounded-2xl nmti-shadow border-t-4 border-[#b89b5e]">
           <h3 className="text-lg font-bold mb-3 flex items-center gap-2 text-[#3a403a]">
             <span className="w-1.5 h-5 bg-[#b89b5e] rounded-full" />
-            日常状态
+            {t.resultDailyState}
           </h3>
           <ul className="space-y-2">
-            {role.dailyState.map((s, i) => (
+            {role.dailyState[lang].map((s, i) => (
               <li key={i} className="flex gap-2 text-gray-600 font-medium">
                 <span className="text-[#b89b5e] font-bold">●</span>
                 {s}
@@ -301,17 +326,17 @@ const Result = ({
         <section className="bg-white p-6 rounded-2xl nmti-shadow border-t-4 border-[#9db495]">
           <h3 className="text-lg font-bold mb-3 flex items-center gap-2 text-[#3a403a]">
             <span className="w-1.5 h-5 bg-[#9db495] rounded-full" />
-            专属优势
+            {t.resultStrength}
           </h3>
-          <p className="text-gray-600 leading-relaxed font-bold">{role.exclusiveStrength}</p>
+          <p className="text-gray-600 leading-relaxed font-bold">{role.exclusiveStrength[lang]}</p>
         </section>
 
         <section className="bg-[#9db495]/5 p-6 rounded-2xl border-2 border-[#9db495]/20">
           <h3 className="text-lg font-bold mb-3 flex items-center gap-2 text-[#9db495]">
-            日常行动指南
+            {t.resultGuide}
           </h3>
           <ul className="space-y-3">
-            {role.dailyActionGuide.map((g, i) => (
+            {role.dailyActionGuide[lang].map((g, i) => (
               <li key={i} className="bg-white p-3 rounded-xl border border-gray-100 text-gray-700 text-sm font-medium">
                 {g}
               </li>
@@ -323,13 +348,13 @@ const Result = ({
           <section className="bg-white/50 p-6 rounded-2xl border-2 border-dashed border-[#9db495]/30">
             <h3 className="text-lg font-bold mb-4 text-[#9db495]/60 flex items-center gap-2">
               <span className="w-1.5 h-5 bg-[#9db495]/30 rounded-full" />
-              隐藏副人格
+              {t.resultHiddenRole}
             </h3>
             <div className="flex items-center gap-4">
-              <img src={hiddenRole.image} alt={hiddenRole.name} className="w-16 h-16 rounded-xl grayscale opacity-60" />
+              <img src={hiddenRole.image} alt={hiddenRole.name[lang]} className="w-16 h-16 rounded-xl grayscale opacity-60" />
               <div>
-                <p className="font-bold text-[#3a403a]">{hiddenRole.name}</p>
-                <p className="text-xs text-gray-500 font-medium">当你在压力极端状态下可能切换的模式</p>
+                <p className="font-bold text-[#3a403a]">{hiddenRole.name[lang]}</p>
+                <p className="text-xs text-gray-500 font-medium">{t.resultHiddenDesc}</p>
               </div>
             </div>
           </section>
@@ -338,23 +363,24 @@ const Result = ({
         <div className="flex flex-col gap-4 py-8">
           <Button onClick={onRestart} className="flex items-center justify-center gap-2">
             <RotateCcw size={20} />
-            再测一次
+            {t.restartBtn}
           </Button>
           <div className="flex gap-4">
             <Button variant="secondary" onClick={() => window.print()} className="flex-1 flex items-center justify-center gap-2">
               <Share2 size={20} />
-              截图分享
+              {t.shareBtn}
             </Button>
           </div>
         </div>
       </div>
       
-      <Disclaimer />
+      <Disclaimer lang={lang} />
     </motion.div>
   );
 };
 
-const Gallery = ({ onBack }: { onBack: () => void }) => {
+const Gallery = ({ onBack, lang }: { onBack: () => void; lang: Language; key?: React.Key }) => {
+  const t = uiTranslations[lang];
   return (
     <motion.div 
       initial={{ opacity: 0 }} 
@@ -365,7 +391,7 @@ const Gallery = ({ onBack }: { onBack: () => void }) => {
         <button onClick={onBack} className="p-2 -ml-2 text-gray-400">
           <ChevronLeft size={24} />
         </button>
-        <h1 className="text-2xl font-black text-[#3a403a]">角色图鉴</h1>
+        <h1 className="text-2xl font-black text-[#3a403a]">{t.galleryTitle}</h1>
       </div>
 
       <div className="grid grid-cols-1 gap-6 max-w-md mx-auto">
@@ -380,12 +406,12 @@ const Gallery = ({ onBack }: { onBack: () => void }) => {
               className="bg-white p-6 rounded-2xl nmti-shadow border-t-4 border-[#9db495] relative overflow-hidden group"
             >
               <div className="flex items-start gap-4">
-                <img src={role.image} alt={role.name} className="w-20 h-20 rounded-xl object-cover border border-gray-100 flex-shrink-0" />
+                <img src={role.image} alt={role.name[lang]} className="w-20 h-20 rounded-xl object-cover border border-gray-100 flex-shrink-0" />
                 <div>
-                  <h3 className="text-xl font-black text-[#3a403a]">{role.name}</h3>
-                  <p className="text-[#9db495] font-bold text-sm mb-2">{role.type}</p>
+                  <h3 className="text-xl font-black text-[#3a403a]">{role.name[lang]}</h3>
+                  <p className="text-[#9db495] font-bold text-sm mb-2">{role.type[lang]}</p>
                   <p className="text-gray-500 text-xs italic bg-gray-50 p-2 rounded-lg border-l-4 border-[#9db495]/30">
-                    “{role.slogan}”
+                    “{role.slogan[lang]}”
                   </p>
                 </div>
               </div>
@@ -396,11 +422,11 @@ const Gallery = ({ onBack }: { onBack: () => void }) => {
 
       <div className="mt-12 flex justify-center">
         <Button variant="secondary" onClick={onBack} className="w-64">
-          返回首页
+          {t.backHomeBtn}
         </Button>
       </div>
 
-      <Disclaimer />
+      <Disclaimer lang={lang} />
     </motion.div>
   );
 };
@@ -410,10 +436,12 @@ const Gallery = ({ onBack }: { onBack: () => void }) => {
 export default function App() {
   const [step, setStep] = useState<Step>('home');
   const [result, setResult] = useState<CalculationResult | null>(null);
+  const [lang, setLang] = useState<Language>('zh');
 
   const handleStart = () => setStep('quiz');
   const handleViewGallery = () => setStep('gallery');
   const handleBackHome = () => setStep('home');
+  const toggleLang = () => setLang(prev => prev === 'zh' ? 'en' : 'zh');
 
   const handleQuizSubmit = (answers: Record<number, number>) => {
     const calcResult = calculateResult(answers, questions);
@@ -427,22 +455,46 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-nmti-bg select-none overflow-x-hidden">
+    <div className="min-h-screen bg-[#fcfdfc] select-none overflow-x-hidden text-[#3a403a]">
       <AnimatePresence mode="wait">
         {step === 'home' && (
-          <Home onStart={handleStart} onViewGallery={handleViewGallery} />
+          <Home 
+            key="home" 
+            onStart={handleStart} 
+            onViewGallery={handleViewGallery} 
+            lang={lang} 
+            onToggleLang={toggleLang}
+          />
         )}
         {step === 'quiz' && (
-          <Quiz onSubmit={handleQuizSubmit} onBack={handleBackHome} />
+          <Quiz 
+            key="quiz" 
+            onSubmit={handleQuizSubmit} 
+            onBack={handleBackHome} 
+            lang={lang}
+          />
         )}
         {step === 'loading' && (
-          <Loading onFinish={() => setStep('result')} />
+          <Loading 
+            key="loading" 
+            onFinish={() => setStep('result')} 
+            lang={lang}
+          />
         )}
         {step === 'result' && result && (
-          <Result result={result} onRestart={handleRestart} />
+          <Result 
+            key="result" 
+            result={result} 
+            onRestart={handleRestart} 
+            lang={lang}
+          />
         )}
         {step === 'gallery' && (
-          <Gallery onBack={handleBackHome} />
+          <Gallery 
+            key="gallery" 
+            onBack={handleBackHome} 
+            lang={lang}
+          />
         )}
       </AnimatePresence>
     </div>
