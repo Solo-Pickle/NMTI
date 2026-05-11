@@ -11,6 +11,31 @@ import { Step, RoleKey, CalculationResult, Language } from './types';
 import { calculateResult } from './logic';
 import { ChevronLeft, Share2, RotateCcw, BookOpen, Languages, Download } from 'lucide-react';
 import { uiTranslations } from './i18n';
+// ---------- Google Analytics 初始化 ----------
+// 请将下方的 MEASUREMENT_ID 替换为你在 GA4 中实际获取的 Measurement ID (以 G- 开头)
+const MEASUREMENT_ID = 'G-BVBMZG71TE'; // 🔁 替换为你的真实 ID
+
+// 加载 GA 脚本并初始化
+const initGA = () => {
+  if (typeof window !== 'undefined' && !window.gtag) {
+    const script = document.createElement('script');
+    script.src = `https://www.googletagmanager.com/gtag/js?id=${MEASUREMENT_ID}`;
+    script.async = true;
+    document.head.appendChild(script);
+
+    window.dataLayer = window.dataLayer || [];
+    window.gtag = function () { window.dataLayer.push(arguments); };
+    window.gtag('js', new Date());
+    window.gtag('config', MEASUREMENT_ID);
+  }
+};
+
+// 通用事件追踪函数
+const trackEvent = (eventName: string, params?: Record<string, any>) => {
+  if (typeof window !== 'undefined' && window.gtag) {
+    window.gtag('event', eventName, params);
+  }
+};
 
 // --- Shared Components ---
 
