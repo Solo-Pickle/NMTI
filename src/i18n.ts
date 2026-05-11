@@ -21,7 +21,7 @@ export const uiTranslations = {
     resultHiddenRole: "隐藏副人格",
     resultHiddenDesc: "当你在压力极端状态下可能切换的模式",
     restartBtn: "再测一次",
-    shareBtn: "截图分享",
+    shareBtn: "保存图片",
     galleryTitle: "角色图鉴",
     backHomeBtn: "返回首页",
     langSwitch: "English"
@@ -46,7 +46,7 @@ export const uiTranslations = {
     resultHiddenRole: "Hidden Personality",
     resultHiddenDesc: "The mode you might switch to under extreme pressure.",
     restartBtn: "Retake Test",
-    shareBtn: "Share Result",
+    shareBtn: "Save Image",
     galleryTitle: "Character Gallery",
     backHomeBtn: "Back to Home",
     langSwitch: "中文"
