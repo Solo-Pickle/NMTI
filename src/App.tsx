@@ -488,6 +488,19 @@ export default function App() {
   const [step, setStep] = useState<Step>('home');
   const [result, setResult] = useState<CalculationResult | null>(null);
   const [lang, setLang] = useState<Language>('zh');
+export default function App() {
+  const [step, setStep] = useState<Step>('home');
+  const [result, setResult] = useState<CalculationResult | null>(null);
+  const [lang, setLang] = useState<Language>('zh');
+
+  // 👇 新增：初始化 GA（放在 useState 之后）
+  useEffect(() => {
+    initGA();
+    (window as any).__testStartTime = Date.now();
+  }, []);
+
+  const handleStart = () => setStep('quiz');
+  // ... 其余不变
 
   const handleStart = () => setStep('quiz');
   const handleViewGallery = () => setStep('gallery');
