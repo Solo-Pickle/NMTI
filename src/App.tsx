@@ -11,6 +11,7 @@ import { Step, RoleKey, CalculationResult, Language } from './types';
 import { calculateResult } from './logic';
 import { ChevronLeft, Share2, RotateCcw, BookOpen, Languages, Download } from 'lucide-react';
 import { uiTranslations } from './i18n';
+
 // ---------- Google Analytics 初始化 ----------
 // 请将下方的 MEASUREMENT_ID 替换为你在 GA4 中实际获取的 Measurement ID (以 G- 开头)
 const MEASUREMENT_ID = 'G-BVBMZG71TE'; // 🔁 替换为你的真实 ID
@@ -37,8 +38,7 @@ const trackEvent = (eventName: string, params?: Record<string, any>) => {
   }
 };
 
-// --- Shared Components ---
-
+// ---------- 共享组件 ----------
 const Disclaimer = ({ lang }: { lang: Language }) => (
   <p className="text-[10px] text-gray-400 mt-8 text-center pb-8">
     {uiTranslations[lang].disclaimer}
@@ -69,8 +69,7 @@ const Button = ({
   );
 };
 
-// --- Page Components ---
-
+// ---------- 首页 Home ----------
 const Home = ({ 
   onStart, 
   onViewGallery, 
@@ -84,6 +83,17 @@ const Home = ({
   key?: React.Key;
 }) => {
   const t = uiTranslations[lang];
+  
+  const handleStart = () => {
+    trackEvent('start_test', { timestamp: Date.now() });
+    onStart();
+  };
+  
+  const handleViewGallery = () => {
+    trackEvent('view_gallery', { from: 'home' });
+    onViewGallery();
+  };
+  
   return (
     <motion.div 
       initial={{ opacity: 0 }} 
@@ -128,10 +138,10 @@ const Home = ({
         </p>
 
         <div className="flex flex-col gap-6 items-center">
-          <Button onClick={onStart} className="w-64">
+          <Button onClick={handleStart} className="w-64">
             {t.startBtn}
           </Button>
-          <Button variant="secondary" onClick={onViewGallery} className="w-64 flex items-center justify-center gap-2">
+          <Button variant="secondary" onClick={handleViewGallery} className="w-64 flex items-center justify-center gap-2">
             <BookOpen size={20} />
             {t.galleryBtn}
           </Button>
@@ -143,6 +153,7 @@ const Home = ({
   );
 };
 
+// ---------- 答题页 Quiz ----------
 const Quiz = ({ 
   onSubmit, 
   onBack,
@@ -160,6 +171,13 @@ const Quiz = ({
   const progress = ((currentIndex + 1) / questions.length) * 100;
 
   const handleSelect = (optionIdx: number) => {
+    // GA埋点
+    trackEvent('answer_question', {
+      question_id: currentQuestion.id,
+      option_index: optionIdx,
+      question_is_core: currentQuestion.isCore,
+    });
+    
     const newAnswers = { ...answers, [currentQuestion.id]: optionIdx };
     setAnswers(newAnswers);
 
@@ -241,6 +259,7 @@ const Quiz = ({
   );
 };
 
+// ---------- 计算中 Loading ----------
 const Loading = ({ onFinish, lang }: { onFinish: () => void; lang: Language; key?: React.Key }) => {
   const messages = uiTranslations[lang].loadingMsgs;
   const [msg] = useState(() => messages[Math.floor(Math.random() * messages.length)]);
@@ -274,6 +293,7 @@ const Loading = ({ onFinish, lang }: { onFinish: () => void; lang: Language; key
   );
 };
 
+// ---------- 结果页 Result ----------
 const Result = ({ 
   result, 
   onRestart,
@@ -289,7 +309,21 @@ const Result = ({
   const t = uiTranslations[lang];
   const resultRef = useRef<HTMLDivElement>(null);
 
+  // 进入结果页埋点
+  useEffect(() => {
+    trackEvent('view_result', {
+      final_type: result.finalType,
+      hidden_type: result.hiddenType || 'none',
+    });
+  }, [result]);
+
+  const handleRestartClick = () => {
+    trackEvent('retake_click', { previous_final_type: result.finalType });
+    onRestart();
+  };
+
   const handleSaveImage = useCallback(async () => {
+    trackEvent('share_click', { final_type: result.finalType, method: 'image_download' });
     if (resultRef.current === null) return;
     try {
       const dataUrl = await toPng(resultRef.current, {
@@ -303,7 +337,7 @@ const Result = ({
     } catch (err) {
       console.error('oops, something went wrong!', err);
     }
-  }, [role.name, lang]);
+  }, [role.name, lang, result.finalType]);
 
   return (
     <motion.div 
@@ -413,7 +447,7 @@ const Result = ({
       </div>
 
       <div className="px-6 max-w-md mx-auto flex flex-col items-center gap-6 py-10">
-          <Button onClick={onRestart} className="w-full flex items-center justify-center gap-2">
+          <Button onClick={handleRestartClick} className="w-full flex items-center justify-center gap-2">
             <RotateCcw size={20} />
             {t.restartBtn}
           </Button>
@@ -430,8 +464,14 @@ const Result = ({
   );
 };
 
+// ---------- 图鉴页 Gallery ----------
 const Gallery = ({ onBack, lang }: { onBack: () => void; lang: Language; key?: React.Key }) => {
   const t = uiTranslations[lang];
+  
+  useEffect(() => {
+    trackEvent('view_gallery', { from: 'gallery_page' });
+  }, []);
+  
   return (
     <motion.div 
       initial={{ opacity: 0 }} 
@@ -455,6 +495,7 @@ const Gallery = ({ onBack, lang }: { onBack: () => void; lang: Language; key?: R
               whileInView={{ y: 0, opacity: 1 }}
               viewport={{ once: true }}
               className="bg-white p-6 rounded-2xl nmti-shadow border-t-4 border-[#9db495] relative overflow-hidden group"
+              onClick={() => trackEvent('gallery_expand', { role_key: key, role_name: role.name[lang] })}
             >
               <div className="flex items-start gap-4">
                 <img src={role.image} alt={role.name[lang]} className="w-20 h-20 rounded-xl object-cover border border-gray-100 flex-shrink-0" />
@@ -482,25 +523,17 @@ const Gallery = ({ onBack, lang }: { onBack: () => void; lang: Language; key?: R
   );
 };
 
-// --- Main App ---
-
-export default function App() {
-  const [step, setStep] = useState<Step>('home');
-  const [result, setResult] = useState<CalculationResult | null>(null);
-  const [lang, setLang] = useState<Language>('zh');
+// ---------- 主 App 组件 ----------
 export default function App() {
   const [step, setStep] = useState<Step>('home');
   const [result, setResult] = useState<CalculationResult | null>(null);
   const [lang, setLang] = useState<Language>('zh');
 
-  // 👇 新增：初始化 GA（放在 useState 之后）
+  // 初始化 GA（仅执行一次）
   useEffect(() => {
     initGA();
     (window as any).__testStartTime = Date.now();
   }, []);
-
-  const handleStart = () => setStep('quiz');
-  // ... 其余不变
 
   const handleStart = () => setStep('quiz');
   const handleViewGallery = () => setStep('gallery');
@@ -509,6 +542,12 @@ export default function App() {
 
   const handleQuizSubmit = (answers: Record<number, number>) => {
     const calcResult = calculateResult(answers, questions);
+    // 完成测试埋点
+    trackEvent('complete_test', {
+      final_type: calcResult.finalType,
+      hidden_type: calcResult.hiddenType || 'none',
+      total_seconds: Math.floor((Date.now() - (window as any).__testStartTime) / 1000)
+    });
     setResult(calcResult);
     setStep('loading');
   };
@@ -516,6 +555,8 @@ export default function App() {
   const handleRestart = () => {
     setResult(null);
     setStep('home');
+    // 重置开始时间（可选）
+    (window as any).__testStartTime = Date.now();
   };
 
   return (
@@ -563,4 +604,13 @@ export default function App() {
       </AnimatePresence>
     </div>
   );
+}
+
+// 扩展 Window 接口以支持 gtag
+declare global {
+  interface Window {
+    gtag: (...args: any[]) => void;
+    dataLayer: any[];
+    __testStartTime: number;
+  }
 }
