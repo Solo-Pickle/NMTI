@@ -387,12 +387,12 @@ const Result = ({
         </div>
       </div>
 
-      <div className="px-6 max-w-md mx-auto">
-          <Button onClick={onRestart} className="flex items-center justify-center gap-2">
+      <div className="px-6 max-w-md mx-auto flex flex-col items-center gap-6 py-10">
+          <Button onClick={onRestart} className="w-full flex items-center justify-center gap-2">
             <RotateCcw size={20} />
             {t.restartBtn}
           </Button>
-          <div className="flex gap-4">
+          <div className="flex w-full">
             <Button variant="secondary" onClick={handleSaveImage} className="flex-1 flex items-center justify-center gap-2">
               <Download size={20} />
               {t.shareBtn}
