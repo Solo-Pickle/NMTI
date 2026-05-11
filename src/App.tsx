@@ -6,16 +6,40 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { roles, questions } from './data';
-import { Step, RoleKey, CalculationResult, Language } from './types';
+import { Step, RoleKey, CalculationResult } from './types';
 import { calculateResult } from './logic';
-import { ChevronLeft, Share2, RotateCcw, BookOpen, Languages } from 'lucide-react';
-import { uiTranslations } from './i18n';
+import { ChevronLeft, Share2, RotateCcw, Image as ImageIcon, BookOpen } from 'lucide-react';
 
-// --- Shared Components ---
+// ---------- Google Analytics 初始化 ----------
+// 请将下方的 MEASUREMENT_ID 替换为你在 GA4 中实际获取的 Measurement ID (以 G- 开头)
+const MEASUREMENT_ID = 'G-5J3M3WZPSQ'; // 🔁 替换为你的真实 ID
 
-const Disclaimer = ({ lang }: { lang: Language }) => (
+// 加载 GA 脚本并初始化
+const initGA = () => {
+  if (typeof window !== 'undefined' && !window.gtag) {
+    const script = document.createElement('script');
+    script.src = `https://www.googletagmanager.com/gtag/js?id=${MEASUREMENT_ID}`;
+    script.async = true;
+    document.head.appendChild(script);
+
+    window.dataLayer = window.dataLayer || [];
+    window.gtag = function () { window.dataLayer.push(arguments); };
+    window.gtag('js', new Date());
+    window.gtag('config', MEASUREMENT_ID);
+  }
+};
+
+// 通用事件追踪函数
+const trackEvent = (eventName: string, params?: Record<string, any>) => {
+  if (typeof window !== 'undefined' && window.gtag) {
+    window.gtag('event', eventName, params);
+  }
+};
+
+// ---------- 共享组件 ----------
+const Disclaimer = () => (
   <p className="text-[10px] text-gray-400 mt-8 text-center pb-8">
-    {uiTranslations[lang].disclaimer}
+    本测试仅供娱乐，不代表专业心理诊断。
   </p>
 );
 
@@ -43,38 +67,23 @@ const Button = ({
   );
 };
 
-// --- Page Components ---
-
-const Home = ({ 
-  onStart, 
-  onViewGallery, 
-  lang, 
-  onToggleLang 
-}: { 
-  onStart: () => void; 
-  onViewGallery: () => void;
-  lang: Language;
-  onToggleLang: () => void;
-  key?: React.Key;
-}) => {
-  const t = uiTranslations[lang];
+// ---------- 首页 Home ----------
+const Home = ({ onStart, onViewGallery }: { onStart: () => void; onViewGallery: () => void }) => {
+  const handleStart = () => {
+    trackEvent('start_test', { timestamp: Date.now() });
+    onStart();
+  };
+  const handleViewGallery = () => {
+    trackEvent('view_gallery', { from: 'home' });
+    onViewGallery();
+  };
   return (
     <motion.div 
       initial={{ opacity: 0 }} 
       animate={{ opacity: 1 }} 
       exit={{ opacity: 0 }}
-      className="min-h-screen flex flex-col items-center justify-center p-10 text-center max-w-md mx-auto relative"
+      className="min-h-screen flex flex-col items-center justify-center p-10 text-center max-w-md mx-auto"
     >
-      <div className="absolute top-6 right-6">
-        <button 
-          onClick={onToggleLang}
-          className="flex items-center gap-2 bg-white/80 backdrop-blur px-3 py-2 rounded-full text-xs font-bold text-[#9db495] border border-[#9db495]/20 shadow-sm active:scale-95 transition-all"
-        >
-          <Languages size={14} />
-          {t.langSwitch}
-        </button>
-      </div>
-
       <motion.div 
         initial={{ y: -20, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
@@ -95,51 +104,59 @@ const Home = ({
         transition={{ delay: 0.4 }}
       >
         <h1 className="text-4xl font-display font-black text-[#3a403a] mb-4 tracking-tight">
-          {t.homeTitle}
+          NMTI 牛马人格测试
         </h1>
         <p className="text-lg text-gray-500 mb-14 font-medium">
-          {t.homeSubtitle}
+          16 道题，测出你的隐藏状态
         </p>
 
         <div className="flex flex-col gap-6 items-center">
-          <Button onClick={onStart} className="w-64">
-            {t.startBtn}
+          <Button onClick={handleStart} className="w-64">
+            立即开测
           </Button>
-          <Button variant="secondary" onClick={onViewGallery} className="w-64 flex items-center justify-center gap-2">
+          <Button variant="secondary" onClick={handleViewGallery} className="w-64 flex items-center justify-center gap-2">
             <BookOpen size={20} />
-            {t.galleryBtn}
+            查看角色图鉴
           </Button>
         </div>
       </motion.div>
 
-      <Disclaimer lang={lang} />
+      <Disclaimer />
     </motion.div>
   );
 };
 
+// ---------- 答题页 Quiz ----------
 const Quiz = ({ 
   onSubmit, 
-  onBack,
-  lang
+  onBack 
 }: { 
   onSubmit: (answers: Record<number, number>) => void;
   onBack: () => void;
-  lang: Language;
-  key?: React.Key;
 }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [answers, setAnswers] = useState<Record<number, number>>({});
+  const [startTime] = useState(Date.now());
 
   const currentQuestion = questions[currentIndex];
   const progress = ((currentIndex + 1) / questions.length) * 100;
 
   const handleSelect = (optionIdx: number) => {
+    // 埋点：回答某道题（携带题目信息）
+    trackEvent('answer_question', {
+      question_id: currentQuestion.id,
+      option_index: optionIdx,
+      question_is_core: currentQuestion.isCore,
+      time_spent_on_question_ms: Date.now() - startTime // 简化，实际可用更精确的计时
+    });
+
     const newAnswers = { ...answers, [currentQuestion.id]: optionIdx };
     setAnswers(newAnswers);
 
     if (currentIndex < questions.length - 1) {
       setTimeout(() => setCurrentIndex(currentIndex + 1), 200);
     } else {
+      // 完成所有题目，立即提交
       onSubmit(newAnswers);
     }
   };
@@ -175,7 +192,7 @@ const Quiz = ({
         </span>
       </div>
       <p className="text-[10px] text-gray-400 text-center mb-6 tracking-wider">
-        {uiTranslations[lang].progressLabel}
+        请在短时间内做出最真实的反应
       </p>
 
       <AnimatePresence mode="wait">
@@ -189,7 +206,7 @@ const Quiz = ({
         >
           <div className="bg-white p-8 rounded-2xl nmti-shadow mb-10 min-h-[160px] flex items-center justify-center border-t-4 border-[#9db495]">
             <h2 className="text-xl font-bold text-[#3a403a] text-center leading-relaxed">
-              {currentQuestion.question[lang]}
+              {currentQuestion.question}
             </h2>
           </div>
 
@@ -205,7 +222,7 @@ const Quiz = ({
                     : 'bg-white border-gray-100 text-gray-600 hover:border-[#9db495]/30'
                   }`}
               >
-                {option.text[lang]}
+                {option.text}
               </motion.button>
             ))}
           </div>
@@ -215,12 +232,20 @@ const Quiz = ({
   );
 };
 
-const Loading = ({ onFinish, lang }: { onFinish: () => void; lang: Language; key?: React.Key }) => {
-  const messages = uiTranslations[lang].loadingMsgs;
+// ---------- 计算中 Loading ----------
+const Loading = ({ onFinish }: { onFinish: () => void }) => {
+  const messages = [
+    "正在计算你的 NMTI 浓度……",
+    "正在匹配你的精神状态……",
+    "正在加载你的隐藏人格……",
+    "正在生成你的牛马宇宙身份……"
+  ];
   const [msg] = useState(() => messages[Math.floor(Math.random() * messages.length)]);
 
   useEffect(() => {
-    const timer = setTimeout(onFinish, 1800);
+    const timer = setTimeout(() => {
+      onFinish();
+    }, 1800);
     return () => clearTimeout(timer);
   }, [onFinish]);
 
@@ -248,19 +273,35 @@ const Loading = ({ onFinish, lang }: { onFinish: () => void; lang: Language; key
   );
 };
 
+// ---------- 结果页 Result ----------
 const Result = ({ 
   result, 
-  onRestart,
-  lang
+  onRestart 
 }: { 
   result: CalculationResult; 
   onRestart: () => void;
-  lang: Language;
-  key?: React.Key;
 }) => {
   const role = roles[result.finalType];
   const hiddenRole = result.hiddenType ? roles[result.hiddenType] : null;
-  const t = uiTranslations[lang];
+
+  // 结果页进入时上报完成测试及角色信息
+  useEffect(() => {
+    trackEvent('view_result', {
+      final_type: result.finalType,
+      hidden_type: result.hiddenType || 'none',
+      total_seconds: Math.floor((Date.now() - (window as any).__testStartTime) / 1000) || 0
+    });
+  }, [result]);
+
+  const handleRestartClick = () => {
+    trackEvent('retake_click', { previous_final_type: result.finalType });
+    onRestart();
+  };
+
+  const handleShare = () => {
+    trackEvent('share_click', { final_type: result.finalType, method: 'screenshot_print' });
+    window.print(); // 原截图分享逻辑
+  };
 
   return (
     <motion.div 
@@ -277,20 +318,20 @@ const Result = ({
         >
           <img 
             src={role.image} 
-            alt={role.name[lang]} 
+            alt={role.name} 
             className="w-64 h-64 object-cover rounded-2xl nmti-shadow mx-auto"
             referrerPolicy="no-referrer"
           />
           <div className="absolute -top-4 -right-2 bg-[#b89b5e] text-white py-2 px-4 rounded-lg font-bold shadow-lg rotate-6 text-sm">
-            {role.slogan[lang]}
+            {role.slogan}
           </div>
         </motion.div>
 
-        <h1 className="text-4xl font-black text-[#3a403a] mb-2">{role.name[lang]}</h1>
-        <p className="text-xl font-bold text-[#9db495] mb-6">{role.type[lang]}</p>
+        <h1 className="text-4xl font-black text-[#3a403a] mb-2">{role.name}</h1>
+        <p className="text-xl font-bold text-[#9db495] mb-6">{role.type}</p>
         
         <div className="flex flex-wrap justify-center gap-2 mb-10">
-          {role.keywords[lang].map((word, i) => (
+          {role.keywords.map((word, i) => (
             <span key={i} className="bg-[#eef1ee] text-[#9db495] px-4 py-1.5 rounded-full text-sm font-bold border border-[#9db495]/10">
               #{word}
             </span>
@@ -303,18 +344,18 @@ const Result = ({
         <section className="bg-white p-6 rounded-2xl nmti-shadow border-t-4 border-[#9db495]">
           <h3 className="text-lg font-bold mb-3 flex items-center gap-2 text-[#3a403a]">
             <span className="w-1.5 h-5 bg-[#9db495] rounded-full" />
-            {t.resultPersonaImg}
+            人格画像
           </h3>
-          <p className="text-gray-600 leading-relaxed font-medium">{role.description[lang]}</p>
+          <p className="text-gray-600 leading-relaxed font-medium">{role.description}</p>
         </section>
 
         <section className="bg-white p-6 rounded-2xl nmti-shadow border-t-4 border-[#b89b5e]">
           <h3 className="text-lg font-bold mb-3 flex items-center gap-2 text-[#3a403a]">
             <span className="w-1.5 h-5 bg-[#b89b5e] rounded-full" />
-            {t.resultDailyState}
+            日常状态
           </h3>
           <ul className="space-y-2">
-            {role.dailyState[lang].map((s, i) => (
+            {role.dailyState.map((s, i) => (
               <li key={i} className="flex gap-2 text-gray-600 font-medium">
                 <span className="text-[#b89b5e] font-bold">●</span>
                 {s}
@@ -326,17 +367,17 @@ const Result = ({
         <section className="bg-white p-6 rounded-2xl nmti-shadow border-t-4 border-[#9db495]">
           <h3 className="text-lg font-bold mb-3 flex items-center gap-2 text-[#3a403a]">
             <span className="w-1.5 h-5 bg-[#9db495] rounded-full" />
-            {t.resultStrength}
+            专属优势
           </h3>
-          <p className="text-gray-600 leading-relaxed font-bold">{role.exclusiveStrength[lang]}</p>
+          <p className="text-gray-600 leading-relaxed font-bold">{role.exclusiveStrength}</p>
         </section>
 
         <section className="bg-[#9db495]/5 p-6 rounded-2xl border-2 border-[#9db495]/20">
           <h3 className="text-lg font-bold mb-3 flex items-center gap-2 text-[#9db495]">
-            {t.resultGuide}
+            日常行动指南
           </h3>
           <ul className="space-y-3">
-            {role.dailyActionGuide[lang].map((g, i) => (
+            {role.dailyActionGuide.map((g, i) => (
               <li key={i} className="bg-white p-3 rounded-xl border border-gray-100 text-gray-700 text-sm font-medium">
                 {g}
               </li>
@@ -348,39 +389,48 @@ const Result = ({
           <section className="bg-white/50 p-6 rounded-2xl border-2 border-dashed border-[#9db495]/30">
             <h3 className="text-lg font-bold mb-4 text-[#9db495]/60 flex items-center gap-2">
               <span className="w-1.5 h-5 bg-[#9db495]/30 rounded-full" />
-              {t.resultHiddenRole}
+              隐藏副人格
             </h3>
             <div className="flex items-center gap-4">
-              <img src={hiddenRole.image} alt={hiddenRole.name[lang]} className="w-16 h-16 rounded-xl grayscale opacity-60" />
+              <img src={hiddenRole.image} alt={hiddenRole.name} className="w-16 h-16 rounded-xl grayscale opacity-60" />
               <div>
-                <p className="font-bold text-[#3a403a]">{hiddenRole.name[lang]}</p>
-                <p className="text-xs text-gray-500 font-medium">{t.resultHiddenDesc}</p>
+                <p className="font-bold text-[#3a403a]">{hiddenRole.name}</p>
+                <p className="text-xs text-gray-500 font-medium">当你在压力极端状态下可能切换的模式</p>
               </div>
             </div>
           </section>
         )}
 
         <div className="flex flex-col gap-4 py-8">
-          <Button onClick={onRestart} className="flex items-center justify-center gap-2">
+          <Button onClick={handleRestartClick} className="flex items-center justify-center gap-2">
             <RotateCcw size={20} />
-            {t.restartBtn}
+            再测一次
           </Button>
           <div className="flex gap-4">
-            <Button variant="secondary" onClick={() => window.print()} className="flex-1 flex items-center justify-center gap-2">
+            <Button variant="secondary" onClick={handleShare} className="flex-1 flex items-center justify-center gap-2">
               <Share2 size={20} />
-              {t.shareBtn}
+              截图分享
             </Button>
           </div>
         </div>
       </div>
       
-      <Disclaimer lang={lang} />
+      <Disclaimer />
     </motion.div>
   );
 };
 
-const Gallery = ({ onBack, lang }: { onBack: () => void; lang: Language; key?: React.Key }) => {
-  const t = uiTranslations[lang];
+// ---------- 图鉴页 Gallery ----------
+const Gallery = ({ onBack }: { onBack: () => void }) => {
+  useEffect(() => {
+    trackEvent('view_gallery', { from: 'gallery_page' });
+  }, []);
+
+  const handleBack = () => {
+    trackEvent('gallery_back_click', {});
+    onBack();
+  };
+
   return (
     <motion.div 
       initial={{ opacity: 0 }} 
@@ -388,10 +438,10 @@ const Gallery = ({ onBack, lang }: { onBack: () => void; lang: Language; key?: R
       className="min-h-screen bg-[#f2f5f2] p-6 pb-12"
     >
       <div className="flex items-center gap-4 mb-8">
-        <button onClick={onBack} className="p-2 -ml-2 text-gray-400">
+        <button onClick={handleBack} className="p-2 -ml-2 text-gray-400">
           <ChevronLeft size={24} />
         </button>
-        <h1 className="text-2xl font-black text-[#3a403a]">{t.galleryTitle}</h1>
+        <h1 className="text-2xl font-black text-[#3a403a]">角色图鉴</h1>
       </div>
 
       <div className="grid grid-cols-1 gap-6 max-w-md mx-auto">
@@ -404,14 +454,15 @@ const Gallery = ({ onBack, lang }: { onBack: () => void; lang: Language; key?: R
               whileInView={{ y: 0, opacity: 1 }}
               viewport={{ once: true }}
               className="bg-white p-6 rounded-2xl nmti-shadow border-t-4 border-[#9db495] relative overflow-hidden group"
+              onClick={() => trackEvent('gallery_expand', { role_key: key, role_name: role.name })}
             >
               <div className="flex items-start gap-4">
-                <img src={role.image} alt={role.name[lang]} className="w-20 h-20 rounded-xl object-cover border border-gray-100 flex-shrink-0" />
+                <img src={role.image} alt={role.name} className="w-20 h-20 rounded-xl object-cover border border-gray-100 flex-shrink-0" />
                 <div>
-                  <h3 className="text-xl font-black text-[#3a403a]">{role.name[lang]}</h3>
-                  <p className="text-[#9db495] font-bold text-sm mb-2">{role.type[lang]}</p>
+                  <h3 className="text-xl font-black text-[#3a403a]">{role.name}</h3>
+                  <p className="text-[#9db495] font-bold text-sm mb-2">{role.type}</p>
                   <p className="text-gray-500 text-xs italic bg-gray-50 p-2 rounded-lg border-l-4 border-[#9db495]/30">
-                    “{role.slogan[lang]}”
+                    “{role.slogan}”
                   </p>
                 </div>
               </div>
@@ -421,82 +472,79 @@ const Gallery = ({ onBack, lang }: { onBack: () => void; lang: Language; key?: R
       </div>
 
       <div className="mt-12 flex justify-center">
-        <Button variant="secondary" onClick={onBack} className="w-64">
-          {t.backHomeBtn}
+        <Button variant="secondary" onClick={handleBack} className="w-64">
+          返回首页
         </Button>
       </div>
 
-      <Disclaimer lang={lang} />
+      <Disclaimer />
     </motion.div>
   );
 };
 
-// --- Main App ---
-
+// ---------- 主 App 组件 ----------
 export default function App() {
   const [step, setStep] = useState<Step>('home');
   const [result, setResult] = useState<CalculationResult | null>(null);
-  const [lang, setLang] = useState<Language>('zh');
+
+  // 初始化 GA（仅执行一次）
+  useEffect(() => {
+    initGA();
+    // 记录整个测试开始时间（用于计算总耗时）
+    (window as any).__testStartTime = Date.now();
+  }, []);
 
   const handleStart = () => setStep('quiz');
   const handleViewGallery = () => setStep('gallery');
   const handleBackHome = () => setStep('home');
-  const toggleLang = () => setLang(prev => prev === 'zh' ? 'en' : 'zh');
 
   const handleQuizSubmit = (answers: Record<number, number>) => {
     const calcResult = calculateResult(answers, questions);
     setResult(calcResult);
+    // 完成所有题目，上报完成测试事件
+    trackEvent('complete_test', {
+      final_type: calcResult.finalType,
+      hidden_type: calcResult.hiddenType || 'none',
+      total_seconds: Math.floor((Date.now() - (window as any).__testStartTime) / 1000)
+    });
     setStep('loading');
   };
 
   const handleRestart = () => {
     setResult(null);
     setStep('home');
+    // 重置开始时间（可选）
+    (window as any).__testStartTime = Date.now();
   };
 
   return (
-    <div className="min-h-screen bg-[#fcfdfc] select-none overflow-x-hidden text-[#3a403a]">
+    <div className="min-h-screen bg-nmti-bg select-none overflow-x-hidden">
       <AnimatePresence mode="wait">
         {step === 'home' && (
-          <Home 
-            key="home" 
-            onStart={handleStart} 
-            onViewGallery={handleViewGallery} 
-            lang={lang} 
-            onToggleLang={toggleLang}
-          />
+          <Home onStart={handleStart} onViewGallery={handleViewGallery} />
         )}
         {step === 'quiz' && (
-          <Quiz 
-            key="quiz" 
-            onSubmit={handleQuizSubmit} 
-            onBack={handleBackHome} 
-            lang={lang}
-          />
+          <Quiz onSubmit={handleQuizSubmit} onBack={handleBackHome} />
         )}
         {step === 'loading' && (
-          <Loading 
-            key="loading" 
-            onFinish={() => setStep('result')} 
-            lang={lang}
-          />
+          <Loading onFinish={() => setStep('result')} />
         )}
         {step === 'result' && result && (
-          <Result 
-            key="result" 
-            result={result} 
-            onRestart={handleRestart} 
-            lang={lang}
-          />
+          <Result result={result} onRestart={handleRestart} />
         )}
         {step === 'gallery' && (
-          <Gallery 
-            key="gallery" 
-            onBack={handleBackHome} 
-            lang={lang}
-          />
+          <Gallery onBack={handleBackHome} />
         )}
       </AnimatePresence>
     </div>
   );
+}
+
+// 扩展 Window 接口以支持 gtag
+declare global {
+  interface Window {
+    gtag: (...args: any[]) => void;
+    dataLayer: any[];
+    __testStartTime: number;
+  }
 }
